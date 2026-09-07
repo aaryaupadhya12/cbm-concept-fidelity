@@ -1,0 +1,2 @@
+# https://www.kaggle.com/datasets/menakamohanakumar/derm7pt could get it from this dataset on kaggle or get ut from the stanford website
+# The dataset code is not folder strucutre and path invariant and hence might nto be easy to match 

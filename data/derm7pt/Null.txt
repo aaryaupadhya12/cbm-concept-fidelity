@@ -1,0 +1,14 @@
+How we use try to calcualte the null distrbution in Random PROMPTS
+pigment_network:    0.625 - null_p95
+blue_whitish_veil:  0.709 - null_p95
+positive means it beats random tests and negetive means it dosent 
+
+right in random prompt not even related to the actual dataset we can distiguish the different features that actually matter
+so, what we have done is understand which ones are real and which ones are not 
+
+We want to pick the best prompt based on the best mean AUCROC , AUROC - null_95 Gives us the actual signal of what features are importnat 
+
+We dont assume that ceiling is 0.5 and anythign above that works we are testing it with a Random Null test
+
+General CLIP does not exceed a random-text baseline on 5 of 7 concepts. A dermatology-pretrained VLM exceeds it on 6 of 7.
+
