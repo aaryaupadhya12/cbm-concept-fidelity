@@ -1,0 +1,135 @@
+{
+  "_sources": {
+    "argenziano_1998": "Argenziano G. et al., Epiluminescence microscopy for the diagnosis of doubtful melanocytic skin lesions: comparison of the ABCD rule of dermatoscopy and a new 7-point checklist based on pattern analysis. Arch Dermatol 134(12), 1998. Source of the seven criteria and their formal definitions.",
+    "argenziano_2011": "Seven-point checklist of dermoscopy revisited. Br J Dermatol, 2011. Revised scoring where each criterion counts 1 point (total 7) rather than the original 2/2/2/1/1/1/1.",
+    "criterion_definitions": "DermLite 7-point checklist course, https://dermlite.com/pages/7-point-checklist -- reproduces the Argenziano criterion definitions and histological correlates in full, freely accessible. Cross-checked against dermoscopedia, https://dermoscopedia.org/Seven_Point_Checklist. Use these instead of waiting on the Arch Dermatol paywall; the definitions are the same and the paper itself is only needed for the citation.",
+    "kawahara_2019": "Kawahara J., Daneshvar S., Argenziano G., Hamarneh G., Seven-point checklist and skin lesion classification using multitask multimodal neural nets. IEEE JBHI 23(2), 2019. Derm7pt dataset and label taxonomy.",
+    "monet_2024": "Kim C. et al., Transparent medical image AI via an image-text foundation model grounded in medical literature. Nature Medicine, 2024. Dermatology VLM; also the closest prior work to your H1 -- read the concept-annotation validation section before Tuesday."
+  },
+
+  "_design_rationale": [
+    "TIER STRUCTURE. Three wording tiers per concept, each with a matched negative.",
+    "  A = short label (your existing arm).",
+    "  B = Kawahara 2019 taxonomy wording -- the term as the dataset spells it.",
+    "  C = Argenziano criterion definition, restated in plain visual language with the",
+    "      dermatological noun removed.",
+    "",
+    "WHY C IS THE ONE THAT TESTS THE HYPOTHESIS. B mostly swaps one specialist noun for",
+    "another. If CLIP never saw the vocabulary, B fails for exactly the reason A failed and",
+    "you learn nothing. C removes the term and describes only the morphology, in words that",
+    "plausibly occur in web captions. If C rescues a concept and B does not, the finding is",
+    "'CLIP has the percept but not the term' -- sharper than either 'CLIP can't see this' or",
+    "'CLIP needs the right words', and the version worth writing up.",
+    "",
+    "NEGATIVES ARE THE BENIGN COUNTERPART, NOT NEGATION. CLIP handles negation poorly, so",
+    "'no blue-whitish veil' is close to useless as a contrast. The checklist itself supplies",
+    "the right negatives: it scores atypical network against typical network, and irregular",
+    "vessels against comma-shaped vessels seen in dermal nevi. Contrasting against the benign",
+    "counterpart also matches what the clinician is actually discriminating, which is the",
+    "thing you claim to be auditing.",
+    "",
+    "WHAT CHANGED FROM MY FIRST DRAFT, AND WHY. Two of my tier-C descriptions were wrong",
+    "against the source definition:",
+    "  pigmentation -- I emphasised asymmetric darkness. The defining feature in Argenziano's",
+    "    definition is an ABRUPT CUTOFF at the edge of the pigmented area, not the asymmetry.",
+    "    Corrected below. This matters because pigmentation is your one concept where a",
+    "    supervised CNN reaches ~0.79 and CLIP sits at ~0.55, so it is the concept most likely",
+    "    to be a wording failure rather than a hard-percept failure.",
+    "  vascular structures -- the definition requires the vessels to lie OUTSIDE regression",
+    "    areas, which is a spatial qualifier no single prompt can express. Noted as a known",
+    "    limitation rather than papered over.",
+    "",
+    "SCORING. Use score = cos(image, pos) - cos(image, neg), then AUROC against the binarised",
+    "expert grade. The difference form cancels the per-image embedding-norm effect that",
+    "inflates single-prompt AUROC. If your existing tier-A arm used cos(image, pos) alone,",
+    "rerun A in difference form or the tiers are not comparable and the grid is uninterpretable.",
+    "",
+    "NULL. Score all tiers against the SAME 200-pair random-text null you already built.",
+    "Building a fresh null per tier changes the multiple-comparison accounting mid-experiment.",
+    "With 3 tiers x 4 templates x 7 concepts you are at 84 tests; carry that into Bonferroni,",
+    "not the 42 from the earlier grid.",
+    "",
+    "IF YOU RUN MONET. MONET does not score concepts by raw cosine similarity -- it normalises",
+    "against a reference image set. Applying your CLIP scoring code to MONET embeddings",
+    "unchanged handicaps MONET and the comparison stops being fair. Follow their protocol or",
+    "state plainly that you used a common scoring rule for comparability and that this is a",
+    "deviation from the MONET paper."
+  ],
+
+  "templates": [
+    "{}",
+    "a dermoscopic image of {}",
+    "a dermoscopy photograph of a skin lesion showing {}",
+    "this skin lesion shows {}"
+  ],
+
+  "concepts": {
+    "pigment_network": {
+      "definition_source": "argenziano_1998: a prominent -- hyperpigmented or broadened -- and irregular network. Histological correlate: rete ridges that are hyperpigmented or broadened, with irregular shape or distribution.",
+      "A": {"pos": "atypical pigment network", "neg": "typical pigment network"},
+      "B": {"pos": "an atypical pigment network", "neg": "a regular, discrete pigment network"},
+      "C": {"pos": "a brown mesh whose lines are thickened and unevenly spread, with holes of differing size",
+            "neg": "a brown mesh of thin, evenly spaced lines with holes of uniform size"},
+      "note": "Derm7pt grades this three ways (absent / typical / atypical). The A-vs-B contrast is nearly a paraphrase, so treat B as a control on wording sensitivity rather than a real intervention."
+    },
+
+    "blue_whitish_veil": {
+      "definition_source": "argenziano_1998 (listed as gray-blue areas): irregular, confluent gray-blue to whitish-blue diffuse pigmentation, explicitly not red-blue lacunes and not maple-leaf pigmentation. Histological correlate: pigmented melanophages or melanocytes in the mid-reticular dermis.",
+      "A": {"pos": "blue-whitish veil", "neg": "no blue-whitish veil"},
+      "B": {"pos": "a blue-whitish veil", "neg": "a lesion without blue-white structures"},
+      "C": {"pos": "a merged gray-blue to milky-white haze spread over part of the surface",
+            "neg": "clear brown and tan surface with no gray-blue haze"},
+      "note": "Your strongest concept at 0.709. Expect the smallest tier effect here -- the everyday-language and clinical descriptions nearly coincide, which is itself the explanation for why it works."
+    },
+
+    "vascular_structures": {
+      "definition_source": "argenziano_1998 (atypical vascular pattern): linear, dotted or globular red structures, irregularly distributed, located outside areas of regression. The benign counterpart named in the source is comma-shaped vessels, typical of compound and dermal nevi.",
+      "A": {"pos": "irregular vascular structures", "neg": "regular vascular structures"},
+      "B": {"pos": "an atypical vascular pattern with dotted and linear irregular vessels",
+            "neg": "regular comma-shaped vessels typical of a dermal nevus"},
+      "C": {"pos": "red dots and short red lines scattered unevenly across the surface",
+            "neg": "a few smoothly curved red lines, evenly placed"},
+      "note": "Known limitation: the definition's 'outside areas of regression' qualifier is not expressible in a single prompt. Kawahara et al.'s supervised CNN also struggles here and tends to predict absent, so a failure is expected and should be reported as expected, not as evidence about CLIP."
+    },
+
+    "pigmentation": {
+      "definition_source": "argenziano_1998 (irregular diffuse pigmentation / blotches): brown, gray and black areas of diffuse pigmentation, irregular in shape or distribution, ending abruptly. Histological correlate: hyperpigmentation through all epidermal levels or upper dermis.",
+      "A": {"pos": "irregular pigmentation", "neg": "regular pigmentation"},
+      "B": {"pos": "irregular diffuse pigmentation with blotches",
+            "neg": "regular uniform diffuse pigmentation"},
+      "C": {"pos": "a dark brown-black patch that stops abruptly instead of fading out",
+            "neg": "brown colour that fades gradually toward the edge"},
+      "note": "The concept to watch. Supervised CNN ~0.79 vs your zero-shot ~0.55 says the signal is present in the image and CLIP is missing it -- a wording failure is the leading hypothesis, and 'abrupt cutoff' is the discriminating cue the short label never mentions. If tier C moves this one, that single row carries the paper's argument."
+    },
+
+    "streaks": {
+      "definition_source": "argenziano_1998 (radial streaming / streaks): linear or bulbous extensions at the lesion edge, arranged radially and asymmetrically. Histological correlate: confluent radial junctional nests of melanocytes.",
+      "A": {"pos": "irregular streaks", "neg": "regular streaks"},
+      "B": {"pos": "irregular streaks with radial streaming and pseudopods",
+            "neg": "regular streaks arranged symmetrically around the border"},
+      "C": {"pos": "dark finger-like projections extending outward from only part of the edge",
+            "neg": "dark projections spaced evenly all the way around the edge"},
+      "note": "Already real at 0.637. 'Radiating lines' is common visual English, consistent with your reading that CLIP handles concepts describable without specialist vocabulary."
+    },
+
+    "dots_and_globules": {
+      "definition_source": "argenziano_1998: black, brown or blue round structures, irregularly distributed within the lesion. Histological correlate: pigment aggregates in the stratum corneum, at the junction, or in the dermis.",
+      "A": {"pos": "irregular dots and globules", "neg": "regular dots and globules"},
+      "B": {"pos": "irregular dots and globules of varying size and distribution",
+            "neg": "regular dots and globules of uniform size, evenly distributed"},
+      "C": {"pos": "round brown and black specks of clearly different sizes, bunched unevenly",
+            "neg": "round brown specks of similar size, spread evenly throughout"},
+      "note": "Borderline at 0.613, beaten by 4/200 null pairs. Whichever way tier C moves it, report the null-beat count alongside, not just the AUROC."
+    },
+
+    "regression_structures": {
+      "definition_source": "argenziano_1998 (regression pattern): white scar-like depigmentation and/or peppering -- multiple speckled blue-gray dots inside a hypopigmented area -- irregularly distributed. Histological correlate: pigment loss with fibroplasia and scattered dermal melanophages.",
+      "A": {"pos": "regression structures", "neg": "no regression structures"},
+      "B": {"pos": "regression structures with scar-like depigmentation and peppering",
+            "neg": "a lesion without regression or depigmented areas"},
+      "C": {"pos": "a white scar-like area sprinkled with fine blue-gray dots",
+            "neg": "even pigmentation with no white scar-like patch"},
+      "note": "Borderline at 0.649. The definition is genuinely two visual things (white area, peppering) fused into one label -- if tier C fails, worth reporting the two halves as separate prompts as a small ablation, since that failure mode is about label composition rather than vocabulary."
+    }
+  }
+}
